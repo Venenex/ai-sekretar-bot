@@ -1,13 +1,16 @@
-
 import os
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+import openai_whisper
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+
+# Инициализация Whisper (для голосовых сообщений)
+whisper_model = openai_whisper.load_model("base")  # Модель Whisper (base, small, medium, large)
 
 # Временное хранилище задач
 tasks = {}
 
-# Логгирование
+# Логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -39,33 +42,4 @@ async def list_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📝 Ваши задачи:\n" + response)
 
 # Обработка голосовых сообщений
-async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    file = await update.message.voice.get_file()
-    voice_path = f"voice_{update.message.message_id}.ogg"
-    await file.download_to_drive(voice_path)
-    await update.message.reply_text("🎤 Голосовое сообщение получено. Обрабатываю...")
-
-    # Здесь будет интеграция Whisper API
-    # Пока просто заглушка
-    transcribed_text = "[здесь будет текст после распознавания]"
-    await update.message.reply_text(f"📝 Распознано: {transcribed_text}")
-
-# Основной запуск
-def main():
-    TOKEN = os.getenv("BOT_TOKEN")
-    if not TOKEN:
-        print("❌ Не указан BOT_TOKEN в переменных окружения.")
-        return
-
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("добавить", add_task))
-    app.add_handler(CommandHandler("все", list_tasks))
-    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-
-    print("Бот запущен...")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+async def handle_voice(update_
