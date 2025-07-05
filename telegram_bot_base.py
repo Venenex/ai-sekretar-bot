@@ -1,11 +1,12 @@
 import os
 import logging
 import openai_whisper
-from telegram import Update
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Загрузка модели Whisper (можно выбрать: tiny, base, small, medium, large)
-whisper_model = openai_whisper.load_model("base")
+# Инициализация модели Whisper
+whisper_model = openai_whisper.load_model("base")  # можно заменить на small, medium, large
 
 # Временное хранилище задач
 tasks = {}
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привет! Я — AI-секретарь 🤖\n\n"
-        "Отправь мне задачу текстом или голосом, и я её сохраню.\n"
+        "Отправь мне задачу текстом или голосом, и я её сохраню.\n\n"
         "Доступные команды:\n"
         "/добавить — добавить задачу\n"
         "/все — показать все задачи"
@@ -32,40 +33,38 @@ async def add_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Напиши задачу после команды. Например: /добавить Купить молоко")
         return
     tasks.setdefault(user_id, []).append(task_text)
-    await update.message.reply_text(f"✅ Задача добавлена: {task_text}")
+    await update.message.reply_text("✅ Задача добавлена!")
 
 # Команда /все
 async def list_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_tasks = tasks.get(user_id, [])
     if not user_tasks:
-        await update.message.reply_text("У вас пока нет задач.")
+        await update.message.reply_text("📭 У вас пока нет задач.")
     else:
-        response = "\n".join([f"{i+1}. {task}" for i, task in enumerate(user_tasks)])
+        response = "\n".join([f"{i + 1}. {task}" for i, task in enumerate(user_tasks)])
         await update.message.reply_text("📝 Ваши задачи:\n" + response)
 
-# Обработка голосовых сообщений и их расшифровка через Whisper
+# Обработка голосовых сообщений через Whisper
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = await update.message.voice.get_file()
     voice_path = f"voice_{update.message.message_id}.ogg"
     await file.download_to_drive(voice_path)
-    await update.message.reply_text("🎙 Голосовое сообщение получено. Распознаю текст...")
+    await update.message.reply_text("🎤 Голосовое сообщение получено. Распознаю текст...")
 
-    # Распознавание
     try:
-        result = whisper_model.transcribe(voice_path, language="ru")
-        transcribed_text = result["text"]
-        await update.message.reply_text(f"📝 Распознано: {transcribed_text}")
+        audio = openai_whisper.load_audio(voice_path)
+        audio = openai_whisper.pad_or_trim(audio)
+        mel = openai_whisper.log_mel_spectrogram(audio).to(whisper_model.device)
+        _, probs = whisper_model.detect_language(mel)
+        transcription = whisper_model.transcribe(audio)
+        transcribed_text = transcription["text"]
+
+        await update.message.reply_text(f"📝 Распознанный текст:\n{transcribed_text}")
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка при распознавании: {str(e)}")
 
-    # Сохраняем как задачу
-    user_id = update.effective_user.id
-    tasks.setdefault(user_id, []).append(transcribed_text)
-
-    await update.message.reply_text(f"📝 Распознано: {transcribed_text}\n✅ Задача добавлена.")
-
-# Основной запуск
+# Запуск бота
 def main():
     TOKEN = os.getenv("BOT_TOKEN")
     if not TOKEN:
@@ -84,4 +83,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
