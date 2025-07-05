@@ -84,4 +84,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-async def handle_voice(update_
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
