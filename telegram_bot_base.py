@@ -49,19 +49,15 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = await update.message.voice.get_file()
     voice_path = f"voice_{update.message.message_id}.ogg"
     await file.download_to_drive(voice_path)
-    await update.message.reply_text("🎤 Голосовое сообщение получено. Распознаю текст...")
+    await update.message.reply_text("🎙 Голосовое сообщение получено. Распознаю текст...")
 
     # Распознавание
     try:
-        audio = openai_whisper.load_audio(voice_path)
-        audio = openai_whisper.pad_or_trim(audio)
-        mel = openai_whisper.log_mel_spectrogram(audio).to(whisper_model.device)
-        _, probs = whisper_model.detect_language(mel)
-        transcription = whisper_model.transcribe(audio)
-        transcribed_text = transcription["text"]
+        result = whisper_model.transcribe(voice_path, language="ru")
+        transcribed_text = result["text"]
+        await update.message.reply_text(f"📝 Распознано: {transcribed_text}")
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка при распознавании: {str(e)}")
-        return
 
     # Сохраняем как задачу
     user_id = update.effective_user.id
