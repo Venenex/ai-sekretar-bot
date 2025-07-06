@@ -1,10 +1,10 @@
 import os
 import logging
 import whisper
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Инициализация Whisper (модель base)
+# Инициализация модели Whisper
 whisper_model = whisper.load_model("base")
 
 # Временное хранилище задач
@@ -14,17 +14,15 @@ tasks = {}
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привет! Я — AI-секретарь 🤖\n\n"
-        "Отправь мне задачу текстом или голосом, и я её сохраню.\n"
+        "Отправь мне задачу текстом или голосом, и я её сохраню.\n\n"
         "Доступные команды:\n"
         "/добавить — добавить задачу\n"
         "/все — показать все задачи"
     )
-
 
 # Команда /добавить
 async def add_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -36,37 +34,34 @@ async def add_task(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tasks.setdefault(user_id, []).append(task_text)
     await update.message.reply_text("✅ Задача добавлена!")
 
-
 # Команда /все
 async def list_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_tasks = tasks.get(user_id, [])
     if not user_tasks:
-        await update.message.reply_text("🗒️ У вас пока нет задач.")
+        await update.message.reply_text("📭 У вас пока нет задач.")
         return
-    response = "\n".join([f"{i+1}. {task}" for i, task in enumerate(user_tasks)])
+    response = "\n".join(f"{i+1}. {t}" for i, t in enumerate(user_tasks))
     await update.message.reply_text("📝 Ваши задачи:\n" + response)
 
-
-# Обработка голосовых сообщений и их расшифровка через Whisper
+# Обработка голосовых сообщений
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = await update.message.voice.get_file()
     voice_path = f"voice_{update.message.message_id}.ogg"
     await file.download_to_drive(voice_path)
-    await update.message.reply_text("🎤 Голосовое сообщение получено. Распознаю текст...")
+    await update.message.reply_text("🎙 Голосовое сообщение получено. Распознаю текст...")
 
     try:
-        audio = whisper.load_audio(voice_path)
-        audio = whisper.pad_or_trim(audio)
-        mel = whisper.log_mel_spectrogram(audio).to(whisper_model.device)
-        _, probs = whisper_model.detect_language(mel)
-        transcription = whisper_model.transcribe(audio)
-        transcribed_text = transcription["text"]
-        await update.message.reply_text(f"📝 Распознано: {transcribed_text}")
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Ошибка при распознавании: {str(e)}")
-        return
+        result = whisper_model.transcribe(voice_path)
+        transcribed_text = result["text"].strip()
+        await update.message.reply_text(f"📝 Распознанный текст:\n{transcribed_text}")
 
+        # Сохраняем как задачу
+        user_id = update.effective_user.id
+        tasks.setdefault(user_id, []).append(transcribed_text)
+        await update.message.reply_text("✅ Задача добавлена из голосового сообщения!")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Ошибка при распознавании: {e}")
 
 # Основной запуск
 def main():
@@ -84,7 +79,6 @@ def main():
 
     print("✅ Бот запущен...")
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
