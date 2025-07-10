@@ -1,4 +1,3 @@
-import logging
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -7,30 +6,23 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+import logging
 
-# Включаем логирование
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-# Команда /start
+TOKEN = "7636640960:AAF8BqymLif1gIRuFtb03jjWytj7FNWGKcw"
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет! Я твой AI-секретарь. Напиши задачу.")
 
-# Обработка сообщений
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
-    await update.message.reply_text(f"Задача добавлена: {user_message}")
+    text = update.message.text
+    await update.message.reply_text(f"Задача добавлена: {text}")
 
-# Обработка ошибок
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(msg="Ошибка при обработке обновления:", exc_info=context.error)
+    logging.error(msg="Произошла ошибка:", exc_info=context.error)
 
 def main():
-    TOKEN = "7636640960:AAF8BqymLif1gIRuFtb03jjWytj7FNWGKcw"
-
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
