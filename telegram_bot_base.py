@@ -31,7 +31,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 # Основная точка входа
 def main():
     # 🔑 Укажи здесь свой токен Telegram-бота
-    TOKEN = "ТВОЙ_ТОКЕН_ЗДЕСЬ"
+    TOKEN = "7636640960:AAF8BqymLif1gIRuFtb03jjWytj7FNWGKcw"
 
     # Создаём приложение
     app = ApplicationBuilder().token(TOKEN).build()
